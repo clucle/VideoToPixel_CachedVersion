@@ -1,0 +1,54 @@
+@font-face {
+  font-family: 'Fipps-Regular';
+  src: url(../resources/Fipps-Regular.otf) format("opentype");
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  padding: 8px;
+}
+
+footer {
+  text-align: right;
+}
+
+h1,
+h2 {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.pixel-font {
+  font-family: 'Fipps-Regular';
+}
+
+.text-center {
+  text-align: center;
+}
+
+.container-center {
+  width: 100%;
+  text-align: center;
+}
+
+.container-padding-32px {
+  padding: 32px;
+  box-sizing: border-box;
+}
+
+.container-video {
+  width: auto;
+}
+
+.container-width-fluid {
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .container-video {
+    width: 100%;
+  }
+}

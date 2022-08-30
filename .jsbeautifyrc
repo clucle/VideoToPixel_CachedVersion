@@ -1,0 +1,8 @@
+{
+  "indent_size": 2,
+  "indent_char": " ",
+  "wrap_line_length": 160,
+  "css": {
+    "indent_size": 2
+  }
+}

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+
+  <head>
+    <title>Pixel Video Generator</title>
+    <meta name="description" content="Convert Video to PixelVideo">
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=800">
+    <link rel="icon" type="image/png" sizes="32x32" href="public/favicon-32x32.png">
+    <link rel="stylesheet" type="text/css" href="public/style.css">
+  </head>
+
+  <body>
+    <div>
+      <h1 class="pixel-font text-center">Convert Video To Pixel</h1>
+      <div class="container-padding-32px container-width-fluid ">
+        <h2>1. Select the video to be pixelated.</h2>
+        <input type="file" onchange="readURL(this);"></input>
+        <h2>2. Set pixel size.</h2>
+        <select id="pixel-size" onchange="changePixelSize(this);">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="4">4</option>
+        <option value="8">8</option>
+        <option value="16">16</option>
+        <option value="32" selected>32</option>
+        <option value="48">48</option>
+        <option value="64">64</option>
+        <option value="128">128</option>
+      </select>
+        <h2>3. Set update interval. ( 12ms ~ 1000ms )</h2>
+        <input type="number" name="quantity" min="12" max="1000" onchange="changeInterval(this)" value="1000">
+        <h2>4. Generated Cached Image</h2>
+        <button type="button" onClick="generateCachedImages(this)">Generated Cached Image</button>
+        <h2>5. Play Video</h2>
+      </div>
+      <br>
+      <div class="container-center">
+        <div id="generate-video"></div>
+      </div>
+      <div class="container-center">
+        <video id="video" class="container-video" width="800" height="450" muted controls webkit-playsinline playsinline></video>
+        <canvas id="output-canvas" class="container-video" width="800" height="450"></canvas>
+      </div>
+    </div>
+    <br>
+    <footer>
+      <div class="container-padding-32px">
+        <small>source code : <a href="https://github.com/clucle/VideoToPixel_CachedVersion">github</a></small>
+        <br>
+        <small>Copyright &copy; 2022 clucle. All Rights Reserved</small>
+      </div>
+    </footer>
+  </body>
+
+  <script>
+    let video, canvas, ctx_out;
+    let width, height;
+
+    let pixel_size = 32;
+    let pixel_interval = 1000;
+
+    let video_tmp, canvas_tmp, ctx_tmp;
+    let cached_image = [];
+    let cached_interval = 0;
+
+    function readURL(input) {
+      if (input.files && input.files[0]) {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+          video_tmp.setAttribute("src", e.target.result);
+          video.setAttribute("src", e.target.result);
+        };
+        reader.readAsDataURL(input.files[0]);
+      }
+    }
+
+    function changePixelSize(event) {
+      let pixel_size_num = event.value * 1;
+      if (typeof pixel_size_num != "number") {
+        alert("pixel size error");
+        return;
+      }
+      pixel_size = pixel_size_num;
+    }
+
+    function changeInterval(event) {
+      let pixel_interval_num = event.value * 1;
+      if (typeof pixel_interval_num != "number") {
+        alert("pixel size error");
+        return;
+      }
+      pixel_interval = pixel_interval_num;
+
+      if (pixel_interval < 12) pixel_interval = 12;
+      if (pixel_interval > 1000) pixel_interval = 1000;
+    }
+
+    function takeScreenShot(idx) {
+      let x = idx;
+      return new Promise((resolve, reject) => {
+        video_tmp.addEventListener("seeked", () => {
+          console.log(video_tmp.currentTime);
+          ctx_tmp.drawImage(video_tmp, 0, 0, width, height);
+
+          let frame = ctx_tmp.getImageData(0, 0, width, height);
+          for (let i = 0; i < frame.data.length / 4; i++) {
+            let y = Math.floor(Math.floor(i / width) / pixel_size) * pixel_size;
+            let x = Math.floor(Math.floor(i % width) / pixel_size) * pixel_size;
+            let pos_src = Math.floor(y * width + x);
+
+            let r = frame.data[i * 4 + 0];
+            let g = frame.data[i * 4 + 1];
+            let b = frame.data[i * 4 + 2];
+
+            frame.data[i * 4 + 0] = frame.data[pos_src * 4 + 0];
+            frame.data[i * 4 + 1] = frame.data[pos_src * 4 + 1];
+            frame.data[i * 4 + 2] = frame.data[pos_src * 4 + 2];
+          }
+          cached_image[idx] = frame;
+          console.log(x + " " + idx);
+
+          return resolve()
+        });
+      })
+    }
+
+    function generateCachedImageRecursive(idx) {
+      if (idx * cached_interval > video_tmp.duration * 1000) return;
+      video_tmp.currentTime = idx * cached_interval / 1000;
+      this.takeScreenShot(idx).then(() => {
+        generateCachedImageRecursive(idx + 1);
+      })
+    }
+
+    function generateCachedImages(event) {
+      let cur_time = 0;
+      let idx = 0;
+      cached_image = [];
+      cached_interval = pixel_interval;
+
+      generateCachedImageRecursive(0);
+    }
+
+    function loadedmetadata() {
+      width = video_tmp.videoWidth;
+      height = video_tmp.videoHeight;
+
+      video.width = width;
+      video.height = height;
+
+      video_tmp.width = width;
+      video_tmp.height = height;
+
+      canvas.width = width;
+      canvas.height = height;
+
+      canvas_tmp.width = width;
+      canvas_tmp.height = height;
+    }
+
+    function init() {
+      video = document.getElementById("video");
+      canvas = document.getElementById("output-canvas");
+      ctx_out = document.getElementById("output-canvas").getContext("2d");
+
+      video_tmp = document.createElement("video");
+      video_tmp.setAttribute('preload', 'auto');
+      video_tmp.setAttribute('muted', '');
+      video_tmp.setAttribute('controls', '');
+      video_tmp.setAttribute('webkit-playsinline', '');
+      video_tmp.setAttribute('playsinline', '');
+      video_tmp.addEventListener("loadedmetadata", loadedmetadata);
+
+      canvas_tmp = document.createElement("canvas");
+      canvas_tmp.setAttribute("width", 800);
+      canvas_tmp.setAttribute("height", 450);
+      ctx_tmp = canvas_tmp.getContext("2d");
+
+      video.addEventListener("play", computeFrame);
+    }
+
+    function computeFrame() {
+      if (cached_interval < 1) return;
+
+      let cur_time = video.currentTime * 1000;
+      let cur_idx = Number(cur_time / cached_interval).toFixed();
+      console.log(cur_idx);
+      cur_idx *= 1;
+
+      if (typeof cur_idx != "number") {
+        alert("Error video idx");
+        return;
+      }
+
+      if (cur_idx >= 0 && cur_idx < cached_image.length) {
+        ctx_out.putImageData(cached_image[cur_idx], 0, 0);
+      }
+
+      setTimeout(computeFrame, 0);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      init();
+    });
+  </script>
+
+</html>
