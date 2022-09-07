@@ -97,39 +97,28 @@
       if (pixel_interval > 1000) pixel_interval = 1000;
     }
 
-    function takeScreenShot(idx) {
-      let x = idx;
-      return new Promise((resolve, reject) => {
-        video_tmp.addEventListener("seeked", () => {
-          console.log(video_tmp.currentTime);
-          ctx_tmp.drawImage(video_tmp, 0, 0, width, height);
-
-          let frame = ctx_tmp.getImageData(0, 0, width, height);
-          for (let i = 0; i < frame.data.length / 4; i++) {
-            let y = Math.floor(Math.floor(i / width) / pixel_size) * pixel_size;
-            let x = Math.floor(Math.floor(i % width) / pixel_size) * pixel_size;
-            let pos_src = Math.floor(y * width + x);
-
-            let r = frame.data[i * 4 + 0];
-            let g = frame.data[i * 4 + 1];
-            let b = frame.data[i * 4 + 2];
-
-            frame.data[i * 4 + 0] = frame.data[pos_src * 4 + 0];
-            frame.data[i * 4 + 1] = frame.data[pos_src * 4 + 1];
-            frame.data[i * 4 + 2] = frame.data[pos_src * 4 + 2];
-          }
-          cached_image[idx] = frame;
-          console.log(x + " " + idx);
-
-          return resolve()
+    const takeScreenShot = async(idx) => {
+      try {
+        const promise = new Promise((resolve, reject) => {
+          video_tmp.idx = idx;
+          const seeked = video_tmp.addEventListener(
+            "seeked",
+            ({
+              success
+            }) => resolve(seeked)
+          );
         });
-      })
-    }
+
+        video_tmp.currentTime = idx * cached_interval / 1000;
+        await promise;
+      } catch (e) {
+        console.log(`generate cached image fail`, e);
+      }
+    };
 
     function generateCachedImageRecursive(idx) {
       if (idx * cached_interval > video_tmp.duration * 1000) return;
-      video_tmp.currentTime = idx * cached_interval / 1000;
-      this.takeScreenShot(idx).then(() => {
+      takeScreenShot(idx).then(() => {
         generateCachedImageRecursive(idx + 1);
       })
     }
@@ -173,6 +162,26 @@
       video_tmp.setAttribute('playsinline', '');
       video_tmp.addEventListener("loadedmetadata", loadedmetadata);
 
+      video_tmp.addEventListener("seeked", () => {
+        ctx_tmp.drawImage(video_tmp, 0, 0, width, height);
+
+        let frame = ctx_tmp.getImageData(0, 0, width, height);
+        for (let i = 0; i < frame.data.length / 4; i++) {
+          let y = Math.floor(Math.floor(i / width) / pixel_size) * pixel_size;
+          let x = Math.floor(Math.floor(i % width) / pixel_size) * pixel_size;
+          let pos_src = Math.floor(y * width + x);
+
+          let r = frame.data[i * 4 + 0];
+          let g = frame.data[i * 4 + 1];
+          let b = frame.data[i * 4 + 2];
+
+          frame.data[i * 4 + 0] = frame.data[pos_src * 4 + 0];
+          frame.data[i * 4 + 1] = frame.data[pos_src * 4 + 1];
+          frame.data[i * 4 + 2] = frame.data[pos_src * 4 + 2];
+        }
+        cached_image[video_tmp.idx] = frame;
+      });
+
       canvas_tmp = document.createElement("canvas");
       canvas_tmp.setAttribute("width", 800);
       canvas_tmp.setAttribute("height", 450);
@@ -186,7 +195,6 @@
 
       let cur_time = video.currentTime * 1000;
       let cur_idx = Number(cur_time / cached_interval).toFixed();
-      console.log(cur_idx);
       cur_idx *= 1;
 
       if (typeof cur_idx != "number") {
