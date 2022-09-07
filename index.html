@@ -12,6 +12,11 @@
   </head>
 
   <body>
+    <div id="wait-ui" class="loading hide">
+      <div class="loading-content">
+        Loading...
+      </div>
+    </div>
     <div>
       <h1 class="pixel-font text-center">Convert Video To Pixel</h1>
       <div class="container-padding-32px container-width-fluid ">
@@ -55,7 +60,7 @@
   </body>
 
   <script>
-    let video, canvas, ctx_out;
+    let video, canvas, ctx_out, wait_ui;
     let width, height;
 
     let pixel_size = 32;
@@ -117,7 +122,11 @@
     };
 
     function generateCachedImageRecursive(idx) {
-      if (idx * cached_interval > video_tmp.duration * 1000) return;
+      if (idx * cached_interval > video_tmp.duration * 1000) {
+        wait_ui.classList.add("hide");
+        alert("generate complete");
+        return;
+      }
       takeScreenShot(idx).then(() => {
         generateCachedImageRecursive(idx + 1);
       })
@@ -129,6 +138,7 @@
       cached_image = [];
       cached_interval = pixel_interval;
 
+      wait_ui.classList.remove("hide");
       generateCachedImageRecursive(0);
     }
 
@@ -153,6 +163,7 @@
       video = document.getElementById("video");
       canvas = document.getElementById("output-canvas");
       ctx_out = document.getElementById("output-canvas").getContext("2d");
+      wait_ui = document.getElementById("wait-ui");
 
       video_tmp = document.createElement("video");
       video_tmp.setAttribute('preload', 'auto');
